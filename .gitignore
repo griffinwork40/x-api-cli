@@ -26,6 +26,12 @@ coverage/
 .idea/
 .vscode/
 
-# Internal / non-public artifacts (kept locally, not published)
+# Internal build scaffolding (one-time planning doc, no value to consumers)
 PLAN.md
-SKILL.md
+
+# NOTE: SKILL.md is intentionally TRACKED. It is the agent-facing interface
+# contract for this CLI and ships with the repo. It was previously ignored here
+# alongside PLAN.md, which silently dropped it from every `git add`.
+
+# AFK-managed worktree bookkeeping
+.afk-worktree-meta.json
