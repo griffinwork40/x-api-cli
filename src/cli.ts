@@ -29,6 +29,7 @@ import { resolveConfig } from './auth.js';
 import { XClient } from './client.js';
 import { redactSecrets, collectSecrets } from './redact.js';
 import { applyEnvFiles, formatEnvFileReport } from './env-file.js';
+import { isEntryPoint } from './entry.js';
 import type { ResolveOpts } from './auth.js';
 
 import { runTweet, TWEET_HELP } from './commands/tweet.js';
@@ -289,15 +290,10 @@ export async function runCli(argv: string[], secretsSink: { secrets: string[] })
   return 0;
 }
 
-// Only auto-run when executed as the entry (not when imported by a test).
-// `import.meta.url` matches the invoked script path under Node's ESM loader.
-const invokedPath = process.argv[1];
-const isEntry =
-  invokedPath !== undefined &&
-  (import.meta.url === `file://${invokedPath}` ||
-    import.meta.url.endsWith(invokedPath) ||
-    invokedPath.endsWith('cli.js') ||
-    invokedPath.endsWith('cli.ts'));
+// Only auto-run when executed as the entry (not when imported by a test or a host).
+// Exact, realpath-resolved identity — see entry.ts for why a suffix match is unsafe
+// now that this block mutates `process.env`.
+const isEntry = isEntryPoint(import.meta.url, process.argv[1]);
 
 if (isEntry) {
   // Fill env gaps from `.env` files BEFORE anything reads credentials. Deliberately
