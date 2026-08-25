@@ -36,6 +36,28 @@ Credentials come from the X Developer Console → your App → **Keys & Tokens**
 
 > **Note:** `X_BEARER_TOKEN` (app identity) and `X_OAUTH2_ACCESS_TOKEN` (user identity) both ride in `Authorization: Bearer …` but are **different identities** — keep them in separate vars, never swap.
 
+### Where credentials are read from
+
+You do **not** need to export anything. On startup the CLI layers env files *underneath* the real environment, so an exported shell var always wins and a file is only ever a fallback:
+
+| # | Source | Notes |
+|---|---|---|
+| 1 | **Exported shell env** | Always wins. `X_BEARER_TOKEN=… x …` overrides every file. |
+| 2 | `$X_ENV_FILE` | Explicit escape hatch; a relative path resolves against the cwd. |
+| 3 | `./.env` | Project-local. Only the **current directory** — not a parent walk. |
+| 4 | `$AFK_HOME/config/afk.env` | Shared [agent-afk](https://github.com/griffinwork40/agent-afk) env; `$AFK_HOME` defaults to `~/.afk`. Use this for machine-wide creds. |
+| 5 | `~/.afk.env` | Legacy agent-afk location. |
+
+The **first** source to define a key wins; later files still contribute keys nobody set yet (so `./.env` can hold a project's bearer token while `afk.env` supplies your OAuth1 quartet). A missing or malformed file is skipped silently — a bad line never breaks the run.
+
+A pre-existing but **blank** value (`export X_BEARER_TOKEN=`) counts as unset, so a stray empty export in a shell profile can't silently shadow a real file value.
+
+```bash
+X_ENV_DEBUG=1 x --help    # print which file supplied which var (names only, never values)
+```
+
+File syntax matches `dotenv`/`afk.env`: `KEY=value`, optional `export ` prefix, `#` comments (full-line and trailing), and single/double/backtick quotes — with `\n` expanded inside double quotes only.
+
 ### Auth-mode selection rules
 
 The CLI chooses a mode from the (command, sub-action) it's running plus what's in the environment:

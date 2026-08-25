@@ -5,6 +5,9 @@
  * (see tsup.config.ts `banner`). The `x` bin maps here (package.json `bin`).
  *
  * Responsibilities:
+ *   0. Layer `.env` files UNDER the real `process.env` (env-file.ts) — done ONLY in the
+ *      entry guard at the bottom, never inside `runCli`, so unit tests that inject an
+ *      env stay hermetic and never read the developer's real `~/.afk/config/afk.env`.
  *   1. Parse `process.argv` → `command` + `rest` (`rest[0]` = sub-action).
  *   2. `--help`/`-h`/no command → top-level usage (exit 0);
  *      `x <command> --help` → that command's `<NAME>_HELP` (exit 0).
@@ -25,6 +28,8 @@ import { UsageError, MissingCredentialsError, RateLimitError } from './errors.js
 import { resolveConfig } from './auth.js';
 import { XClient } from './client.js';
 import { redactSecrets, collectSecrets } from './redact.js';
+import { applyEnvFiles, formatEnvFileReport } from './env-file.js';
+import { isEntryPoint } from './entry.js';
 import type { ResolveOpts } from './auth.js';
 
 import { runTweet, TWEET_HELP } from './commands/tweet.js';
@@ -161,6 +166,10 @@ function topLevelUsage(): string {
     '',
     'Auth (env): X_BEARER_TOKEN (reads) · X_API_KEY/SECRET + X_ACCESS_TOKEN/SECRET (OAuth1)',
     '            · X_OAUTH2_ACCESS_TOKEN (OAuth2). See README.md / SKILL.md.',
+    '',
+    'Env files (loaded in order; the shell env and then the FIRST file to set a key win):',
+    '  $X_ENV_FILE  ·  ./.env  ·  $AFK_HOME/config/afk.env (default ~/.afk)  ·  ~/.afk.env',
+    '  Set X_ENV_DEBUG=1 to print which file supplied which var (names only, no values).',
   ].join('\n');
 }
 
@@ -281,17 +290,20 @@ export async function runCli(argv: string[], secretsSink: { secrets: string[] })
   return 0;
 }
 
-// Only auto-run when executed as the entry (not when imported by a test).
-// `import.meta.url` matches the invoked script path under Node's ESM loader.
-const invokedPath = process.argv[1];
-const isEntry =
-  invokedPath !== undefined &&
-  (import.meta.url === `file://${invokedPath}` ||
-    import.meta.url.endsWith(invokedPath) ||
-    invokedPath.endsWith('cli.js') ||
-    invokedPath.endsWith('cli.ts'));
+// Only auto-run when executed as the entry (not when imported by a test or a host).
+// Exact, realpath-resolved identity — see entry.ts for why a suffix match is unsafe
+// now that this block mutates `process.env`.
+const isEntry = isEntryPoint(import.meta.url, process.argv[1]);
 
 if (isEntry) {
+  // Fill env gaps from `.env` files BEFORE anything reads credentials. Deliberately
+  // here and not inside runCli: tests import runCli with an injected env and must not
+  // pick up the developer's real files. Shell exports always win (see env-file.ts).
+  const envReport = applyEnvFiles(process.env);
+  if (process.env['X_ENV_DEBUG'] === '1') {
+    process.stderr.write(formatEnvFileReport(envReport));
+  }
+
   const sink = { secrets: [] as string[] };
   runCli(process.argv, sink)
     .then((code) => {
