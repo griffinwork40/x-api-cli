@@ -46,6 +46,7 @@ import { runDm, DM_HELP } from './commands/dm.js';
 import { runMedia, MEDIA_HELP } from './commands/media.js';
 import { runSpace, SPACE_HELP } from './commands/space.js';
 import { runAccount, ACCOUNT_HELP } from './commands/account.js';
+import { runArticle, ARTICLE_HELP } from './commands/article.js';
 
 // ─── Dispatch table ───────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ const COMMANDS: Record<string, CommandEntry> = {
   media: { run: runMedia, help: MEDIA_HELP, summary: 'Upload media (image one-shot / chunked video).' },
   space: { run: runSpace, help: SPACE_HELP, summary: 'Look up or search Spaces.' },
   account: { run: runAccount, help: ACCOUNT_HELP, summary: 'whoami (user context) + rate-limit probe.' },
+  article: { run: runArticle, help: ARTICLE_HELP, summary: 'Create and publish long-form Articles (Premium).' },
 };
 
 // ─── Auth-needs resolver: (command, subAction) → ResolveOpts ────────────────────────
@@ -133,6 +135,7 @@ const AUTH_NEEDS: Record<string, { default: ResolveOpts; sub?: Record<string, Re
   media: { default: WRITE, sub: { upload: WRITE } },
   space: { default: READ, sub: { get: READ, search: READ } },
   account: { default: USER, sub: { whoami: USER, 'rate-limit': READ } },
+  article: { default: WRITE, sub: { draft: WRITE, publish: WRITE } },
 };
 
 /** Resolves the credential requirement for a (command, subAction) pair. */

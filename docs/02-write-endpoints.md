@@ -436,6 +436,71 @@ All four require OAuth 2.0 **`media.write`** (or OAuth 1.0a).
 
 ---
 
+## 10. Articles (long-form)
+
+X Articles allow Premium subscribers to publish rich-text, long-form content (up to 100,000 characters)
+with headings, formatting, embedded media, and their own URL (`x.com/i/article/{id}`). Publishing an
+article also creates a wrapper tweet that surfaces in followers' feeds.
+
+### 10a. Create Draft Article
+
+| | |
+| --- | --- |
+| **Method + path** | `POST /2/articles/draft` |
+| **Auth** | User context (OAuth 2.0 PKCE or OAuth 1.0a); `tweet.write` + `tweet.read` + `users.read` scopes |
+| **Tier** | Pro and above (Premium account required to publish; draft creation may work on lower tiers) |
+
+**Body (JSON):**
+
+```jsonc
+{
+  "title": "My Article",            // required — article title
+  "content_state": {                 // required — DraftJS content_state object
+    "blocks": [
+      { "text": "Paragraph text", "key": "a1" }
+    ],
+    "entities": []
+  },
+  "cover_media": {                   // optional — cover image
+    "media_id": "1234567890"         // from media upload
+  }
+}
+```
+
+**Response (201):** `{ "data": { "article_id": "1234567890123456789" } }`
+
+**Notes:**
+- The `content_state` uses DraftJS block/entity format (not markdown or plain text).
+- Blocks support `inline_style_ranges` (bold/italic), `entity_ranges` (links/mentions/hashtags),
+  and atomic block types for embedded media, tweets, and URLs.
+
+### 10b. Publish Article
+
+| | |
+| --- | --- |
+| **Method + path** | `POST /2/articles/{article_id}/publish` |
+| **Auth** | User context (OAuth 2.0 PKCE or OAuth 1.0a); `tweet.write` + `tweet.read` + `users.read` scopes |
+| **Tier** | Premium required (the authenticating user must have an active Premium subscription) |
+
+**Response (200):** `{ "data": { "post_id": "1234567890123456789" } }`
+
+The `post_id` is the wrapper tweet ID. Use `GET /2/tweets/{post_id}` to retrieve it.
+
+### Reading articles (no dedicated read endpoint)
+
+There is no `GET /2/articles/{id}` endpoint. To read article content, request the `article`
+tweet field on the wrapper tweet:
+
+```
+GET /2/tweets/{post_id}?tweet.fields=article
+```
+
+Returns `article.title` and `article.plain_text` (the full body as plain text). Note that
+`article.plain_text` may be absent on some article tweets. Use `expansions=article.cover_media`
+to include cover image metadata.
+
+---
+
 ## Quick scope → endpoint map (OAuth 2.0)
 
 | Feature | Required OAuth 2.0 scopes |
@@ -449,6 +514,7 @@ All four require OAuth 2.0 **`media.write`** (or OAuth 1.0a).
 | DMs (send/create/delete) | `dm.write` (`dm.read`) `tweet.read` `users.read` |
 | Lists (create/update/delete/members) | `list.write` `list.read` `tweet.read` `users.read` |
 | Media upload (all v2) | `media.write` |
+| Articles (draft/publish) | `tweet.write` `tweet.read` `users.read` |
 | Refresh token (any long-lived CLI) | `offline.access` |
 
 Full v2 OAuth 2.0 scope vocabulary (authorizationCode flow): `block.read`, `block.write`,
