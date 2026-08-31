@@ -67,6 +67,12 @@ describe('runArticle draft', () => {
     ).rejects.toThrow(UsageError);
   });
 
+  it('throws UsageError when --title is whitespace-only', async () => {
+    await expect(
+      runArticle(makeClient(), ['draft', '--title', '   ', '--content-json', '{"blocks":[]}'], CFG),
+    ).rejects.toThrow(UsageError);
+  });
+
   it('throws UsageError without content flags', async () => {
     await expect(
       runArticle(makeClient(), ['draft', '--title', 'Test'], CFG),
@@ -94,6 +100,20 @@ describe('runArticle draft', () => {
     await expect(
       runArticle(makeClient(), ['draft', '--title', 'T', '--content-file', 'bad.json'], CFG),
     ).rejects.toThrow(UsageError);
+  });
+
+  it('throws UsageError when --content-file does not exist', async () => {
+    mockFileError = Object.assign(new Error('ENOENT: no such file or directory'), {
+      code: 'ENOENT',
+    });
+    const err = await runArticle(
+      makeClient(),
+      ['draft', '--title', 'T', '--content-file', 'missing.json'],
+      CFG,
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(UsageError);
+    expect((err as UsageError).message).toContain('file not found');
+    expect((err as UsageError).message).toContain('missing.json');
   });
 
   it('POSTs /articles/draft with --content-json', async () => {
@@ -175,6 +195,12 @@ describe('runArticle publish', () => {
 
   it('throws UsageError without an id', async () => {
     await expect(runArticle(makeClient(), ['publish'], CFG)).rejects.toThrow(UsageError);
+  });
+
+  it('throws UsageError when both --id and a positional are supplied', async () => {
+    await expect(
+      runArticle(makeClient(), ['publish', '--id', '111', '222'], CFG),
+    ).rejects.toThrow(UsageError);
   });
 
   it('POSTs /articles/{id}/publish via --id', async () => {

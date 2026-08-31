@@ -62,7 +62,7 @@ async function draft(client: XClient, rest: string[], cfg: XClientConfig): Promi
     strict: true,
   });
 
-  const title = values['title'];
+  const title = values['title']?.trim();
   if (!title) throw new UsageError('--title is required');
 
   const contentFile = values['content-file'];
@@ -77,7 +77,17 @@ async function draft(client: XClient, rest: string[], cfg: XClientConfig): Promi
 
   let contentState: unknown;
   if (contentFile) {
-    const raw = await readFile(contentFile, 'utf-8');
+    let raw: string;
+    try {
+      raw = await readFile(contentFile, 'utf-8');
+    } catch (err: unknown) {
+      const code = (err as NodeJS.ErrnoException).code;
+      throw new UsageError(
+        code === 'ENOENT'
+          ? `--content-file '${contentFile}': file not found`
+          : `--content-file '${contentFile}': could not read file (${code ?? String(err)})`,
+      );
+    }
     try {
       contentState = JSON.parse(raw);
     } catch {
@@ -120,6 +130,9 @@ async function publish(client: XClient, rest: string[], cfg: XClientConfig): Pro
     strict: true,
   });
 
+  if (values['id'] && positionals.length > 0) {
+    throw new UsageError('--id and a positional article ID are mutually exclusive');
+  }
   const id = values['id'] ?? positionals[0];
   if (!id) throw new UsageError('--id (or an article id positional) is required');
 
