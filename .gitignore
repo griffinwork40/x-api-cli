@@ -35,3 +35,4 @@ PLAN.md
 
 # AFK-managed worktree bookkeeping
 .afk-worktree-meta.json
+.afk-worktrees/

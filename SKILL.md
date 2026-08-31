@@ -287,6 +287,23 @@ node dist/cli.js account whoami
 
 `whoami` (default sub-action) = **user context only** (`GET /2/users/me`). `rate-limit` makes a cheap read and prints the captured `x-rate-limit-*` headers (add `--username <handle>` to probe under Bearer).
 
+### article
+
+Create and publish long-form Articles (Premium required).
+
+```bash
+# Create a draft article from a DraftJS JSON file
+node dist/cli.js article draft --title "My Article" --content-file draft.json
+
+# Create a draft with inline JSON
+node dist/cli.js article draft --title "My Article" --content-json '{"blocks":[{"text":"Hello world","key":"a1"}],"entities":[]}'
+
+# Publish a draft article
+node dist/cli.js article publish 1234567890123456789
+```
+
+Both `draft` and `publish` require **user context** (write). Publishing requires an active X Premium subscription. The `content_state` body uses DraftJS block/entity format. To **read** article content, use `x tweet get --id <id> --tweet-fields article` on the wrapper tweet.
+
 ## Error handling
 
 The CLI prints a redacted message to stderr and sets an exit code:
